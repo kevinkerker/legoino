@@ -54,64 +54,60 @@ public:
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
  */
-class Lpf2HubAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
-{
-    Lpf2Hub *_lpf2Hub;
+class Lpf2HubAdvertisedDeviceCallbacks : public NimBLEScanCallbacks {
+  Lpf2Hub *_lpf2Hub;
 
-public:
-    Lpf2HubAdvertisedDeviceCallbacks(Lpf2Hub *lpf2Hub) : NimBLEAdvertisedDeviceCallbacks()
-    {
-        _lpf2Hub = lpf2Hub;
-    }
+ public:
+  Lpf2HubAdvertisedDeviceCallbacks(Lpf2Hub *lpf2Hub) : NimBLEScanCallbacks() { _lpf2Hub = lpf2Hub; }
 
-    void onResult(NimBLEAdvertisedDevice *advertisedDevice)
-    {
-        //Found a device, check if the service is contained and optional if address fits requested address
-        log_d("advertised device: %s", advertisedDevice->toString().c_str());
+  void onResult(NimBLEAdvertisedDevice *advertisedDevice) {
+    // Found a device, check if the service is contained and optional if address fits requested
+    // address
+    log_d("advertised device: %s", advertisedDevice->toString().c_str());
 
-        if (advertisedDevice->haveServiceUUID() && advertisedDevice->getServiceUUID().equals(_lpf2Hub->_bleUuid) && (_lpf2Hub->_requestedDeviceAddress == nullptr || (_lpf2Hub->_requestedDeviceAddress && advertisedDevice->getAddress().equals(*_lpf2Hub->_requestedDeviceAddress))))
-        {
-            advertisedDevice->getScan()->stop();
-            _lpf2Hub->_pServerAddress = new BLEAddress(advertisedDevice->getAddress());
-            _lpf2Hub->_hubName = advertisedDevice->getName();
+    if (advertisedDevice->haveServiceUUID() &&
+        advertisedDevice->getServiceUUID().equals(_lpf2Hub->_bleUuid) &&
+        (_lpf2Hub->_requestedDeviceAddress == nullptr ||
+         (_lpf2Hub->_requestedDeviceAddress &&
+          advertisedDevice->getAddress().equals(*_lpf2Hub->_requestedDeviceAddress)))) {
+      advertisedDevice->getScan()->stop();
+      _lpf2Hub->_pServerAddress = new BLEAddress(advertisedDevice->getAddress());
+      _lpf2Hub->_hubName = advertisedDevice->getName();
 
-            if (advertisedDevice->haveManufacturerData())
-            {
-                uint8_t *manufacturerData = (uint8_t *)advertisedDevice->getManufacturerData().data();
-                uint8_t manufacturerDataLength = advertisedDevice->getManufacturerData().length();
-                if (manufacturerDataLength >= 3)
-                {
-                    log_d("manufacturer data hub type: %x", manufacturerData[3]);
-                    //check device type ID
-                    switch (manufacturerData[3])
-                    {
-                    case DUPLO_TRAIN_HUB_ID:
-                        _lpf2Hub->_hubType = HubType::DUPLO_TRAIN_HUB;
-                        break;
-                    case BOOST_MOVE_HUB_ID:
-                        _lpf2Hub->_hubType = HubType::BOOST_MOVE_HUB;
-                        break;
-                    case POWERED_UP_HUB_ID:
-                        _lpf2Hub->_hubType = HubType::POWERED_UP_HUB;
-                        break;
-                    case POWERED_UP_REMOTE_ID:
-                        _lpf2Hub->_hubType = HubType::POWERED_UP_REMOTE;
-                        break;
-                    case CONTROL_PLUS_HUB_ID:
-                        _lpf2Hub->_hubType = HubType::CONTROL_PLUS_HUB;
-                        break;
-                    case MARIO_HUB_ID:
-                        _lpf2Hub->_hubType = HubType::MARIO_HUB;
-                        break;
-                    default:
-                        _lpf2Hub->_hubType = HubType::UNKNOWNHUB;
-                        break;
-                    }
-                }
-            }
-            _lpf2Hub->_isConnecting = true;
+      if (advertisedDevice->haveManufacturerData()) {
+        uint8_t *manufacturerData = (uint8_t *)advertisedDevice->getManufacturerData().data();
+        uint8_t manufacturerDataLength = advertisedDevice->getManufacturerData().length();
+        if (manufacturerDataLength >= 3) {
+          log_d("manufacturer data hub type: %x", manufacturerData[3]);
+          // check device type ID
+          switch (manufacturerData[3]) {
+            case DUPLO_TRAIN_HUB_ID:
+              _lpf2Hub->_hubType = HubType::DUPLO_TRAIN_HUB;
+              break;
+            case BOOST_MOVE_HUB_ID:
+              _lpf2Hub->_hubType = HubType::BOOST_MOVE_HUB;
+              break;
+            case POWERED_UP_HUB_ID:
+              _lpf2Hub->_hubType = HubType::POWERED_UP_HUB;
+              break;
+            case POWERED_UP_REMOTE_ID:
+              _lpf2Hub->_hubType = HubType::POWERED_UP_REMOTE;
+              break;
+            case CONTROL_PLUS_HUB_ID:
+              _lpf2Hub->_hubType = HubType::CONTROL_PLUS_HUB;
+              break;
+            case MARIO_HUB_ID:
+              _lpf2Hub->_hubType = HubType::MARIO_HUB;
+              break;
+            default:
+              _lpf2Hub->_hubType = HubType::UNKNOWNHUB;
+              break;
+          }
         }
+      }
+      _lpf2Hub->_isConnecting = true;
     }
+  }
 };
 
 /**
@@ -815,7 +811,7 @@ void Lpf2Hub::init()
     BLEDevice::init("");
     pBLEScan = BLEDevice::getScan();
 
-    pBLEScan->setAdvertisedDeviceCallbacks(new Lpf2HubAdvertisedDeviceCallbacks(this));
+    pBLEScan->setScanCallbacks(new Lpf2HubAdvertisedDeviceCallbacks(this));
 
     pBLEScan->setActiveScan(true);
     // start method with callback function to enforce the non blocking scan. If no callback function is used,
@@ -829,13 +825,14 @@ void Lpf2Hub::init()
  */
 void Lpf2Hub::init(std::string deviceAddress)
 {
-    _requestedDeviceAddress = new BLEAddress(deviceAddress);
-    init();
+  _requestedDeviceAddress = new BLEAddress(deviceAddress, BLEAddress_TYPE);
+  ;
+  init();
 }
 
 /**
  * @brief Init function set the BLE scan duration (default value 5s)
- * @param [in] BLE scan durtation in unit seconds
+ * @param [in] BLE scan durtation in unit milliseconds
  */
 void Lpf2Hub::init(uint32_t scanDuration)
 {
@@ -845,14 +842,16 @@ void Lpf2Hub::init(uint32_t scanDuration)
 
 /**
  * @brief Init function set the BLE scan duration (default value 5s)
- * @param [in] deviceAddress to which the arduino should connect represented by a hex string of the format: 00:00:00:00:00:00
- * @param [in] BLE scan durtation in unit seconds
+ * @param [in] deviceAddress to which the arduino should connect represented by a hex string of the
+ * format: 00:00:00:00:00:00
+ * @param [in] BLE scan durtation in unit milliseconds
  */
 void Lpf2Hub::init(std::string deviceAddress, uint32_t scanDuration)
 {
-    _requestedDeviceAddress = new BLEAddress(deviceAddress);
-    _scanDuration = scanDuration;
-    init();
+  _requestedDeviceAddress = new BLEAddress(deviceAddress, BLEAddress_TYPE);
+  ;
+  _scanDuration = scanDuration;
+  init();
 }
 
 /**
@@ -1086,42 +1085,38 @@ bool Lpf2Hub::connectHub()
     BLEAddress pAddress = *_pServerAddress;
     NimBLEClient *pClient = nullptr;
 
-    log_d("number of ble clients: %d", NimBLEDevice::getClientListSize());
+    log_d("number of ble clients: %d", NimBLEDevice::getCreatedClientCount());
 
     /** Check if we have a client we should reuse first **/
-    if (NimBLEDevice::getClientListSize())
-    {
-        /** Special case when we already know this device, we send false as the 
-         *  second argument in connect() to prevent refreshing the service database.
-         *  This saves considerable time and power.
-         */
-        pClient = NimBLEDevice::getClientByPeerAddress(pAddress);
-        if (pClient)
-        {
-            if (!pClient->connect(pAddress, false))
-            {
-                log_e("reconnect failed");
-                return false;
-            }
-            log_d("reconnect client");
+    if (NimBLEDevice::getCreatedClientCount()) {
+      /** Special case when we already know this device, we send false as the
+       *  second argument in connect() to prevent refreshing the service database.
+       *  This saves considerable time and power.
+       */
+      pClient = NimBLEDevice::getClientByPeerAddress(pAddress);
+      if (pClient) {
+        if (!pClient->connect(pAddress, false)) {
+          log_e("reconnect failed");
+          return false;
         }
-        /** We don't already have a client that knows this device,
-         *  we will check for a client that is disconnected that we can use.
-         */
-        else
-        {
-            pClient = NimBLEDevice::getDisconnectedClient();
-        }
+        log_d("reconnect client");
+      }
+      /** We don't already have a client that knows this device,
+       *  we will check for a client that is disconnected that we can use.
+       */
+      else {
+        pClient = NimBLEDevice::getDisconnectedClient();
+      }
     }
 
     /** No client to reuse? Create a new one. */
     if (!pClient)
     {
-        if (NimBLEDevice::getClientListSize() >= NIMBLE_MAX_CONNECTIONS)
-        {
-            log_w("max clients reached - no more connections available: %d", NimBLEDevice::getClientListSize());
-            return false;
-        }
+      if (NimBLEDevice::getCreatedClientCount() >= NIMBLE_MAX_CONNECTIONS) {
+        log_w("max clients reached - no more connections available: %d",
+              NimBLEDevice::getCreatedClientCount());
+        return false;
+      }
 
         pClient = NimBLEDevice::createClient();
     }

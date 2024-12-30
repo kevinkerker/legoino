@@ -16,6 +16,8 @@
 #include "Lpf2HubConst.h"
 #include "LegoinoCommon.h"
 
+#define BLEAddress_TYPE 0  // 0: Public ; 1: Random
+
 using namespace std::placeholders;
 
 typedef void (*HubPropertyChangeCallback)(void *hub, HubPropertyReference hubProperty, uint8_t *pData);
@@ -144,7 +146,7 @@ private:
   int numberOfConnectedDevices = 0;
 
   //BLE settings
-  uint32_t _scanDuration = 10;
+  uint32_t _scanDuration = 10000;
 };
 
 #endif // Lpf2Hub_h
